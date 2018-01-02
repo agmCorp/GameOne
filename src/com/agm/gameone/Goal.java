@@ -1,0 +1,26 @@
+package com.agm.gameone;
+
+import com.badlogic.androidgames.framework.GameObject;
+
+/*
+ * La meta no se mueve y es animada.
+ * Sus dimensiones están en metros, como todos los objetos del mundo MVC.
+ * Los valores de sus dimensiones salen haciendo una estimación de como quiero
+ * que se vean en la pantalla. El mundo mide 3.20 por 4.80, con esa idea puedo 
+ * imaginar cuan grandes quiero mis personajes.
+ */
+public class Goal extends GameObject {
+	// Definimos medidas menores que las reales para que su rectángulo de colisiones sea más chico.
+	public static float GOAL_WIDTH = 3.0f;
+	public static float GOAL_HEIGHT = 1.9f;
+	float stateTime;
+
+	public Goal(float x, float y) {
+		super(x, y, GOAL_WIDTH, GOAL_HEIGHT);
+		stateTime = 0;
+	}
+	
+	public void update(float deltaTime) {
+        stateTime += deltaTime;
+	}
+}

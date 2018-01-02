@@ -1,0 +1,344 @@
+package com.agm.gameone;
+
+import java.util.List;
+
+import android.util.Log;
+
+import com.badlogic.androidgames.framework.Input.TouchEvent;
+
+public class backup {
+	/*
+	 * private void updateRunning(float deltaTime) {
+		List<TouchEvent> touchEvents = game.getInput().getTouchEvents();
+		int len = touchEvents.size();
+		for (int i = 0; i < len; i++) {
+			TouchEvent event = touchEvents.get(i);
+			if (event.type != TouchEvent.TOUCH_UP) {
+				continue;
+			}
+			touchPoint.set(event.x, event.y);
+			guiCam.touchToWorld(touchPoint);
+
+			if (OverlapTester.pointInRectangle(pauseBounds, touchPoint)) {
+				Assets.playSound(Assets.clickSound);
+				state = GAME_PAUSED;
+				return;
+			}
+		}
+		// Cambiar esto para controlar con un touch!!!! AGM
+		world.update(deltaTime, game.getInput().getAccelX(), game.getInput().getAccelY());
+		if (world.score != lastScore) {
+			lastScore = world.score;
+			scoreString = "score: " + lastScore;
+		}
+		if (world.state == World.WORLD_STATE_NEXT_LEVEL) {
+			state = GAME_LEVEL_END;
+		}
+		if (world.state == World.WORLD_STATE_GAME_OVER) {
+			state = GAME_OVER;
+			if (lastScore >= Settings.highscores[4]) {
+				scoreString = "NEW HIGHSCORE: " + lastScore;
+			} else {
+				scoreString = "score: " + lastScore;
+			}
+			Settings.addScore(lastScore);
+			Settings.save(game.getFileIO());
+		}
+	}
+
+	 */
+
+}
+
+
+/*
+ * OBS: DEBO TOMAR EN CUENTA QUE EL EVENTO SEA PARA EL MISMO POINTER, PORQUE ME PUEDEN USAR 2 DEDOS.
+ */
+/*
+private void updateRunning(float deltaTime) {
+	int pointer = 0;
+	boolean hubodrag = false;
+	
+	List<TouchEvent> touchEvents = game.getInput().getTouchEvents();
+	int len = touchEvents.size();
+	for (int i = 0; i < len; i++) {
+		TouchEvent event = touchEvents.get(i);
+		
+		if (event.type == TouchEvent.TOUCH_DOWN) {
+			i_touchPoint.set(event.x, event.y);
+			pointer = event.pointer;
+			guiCam.touchToWorld(i_touchPoint);
+			// Log.i("gameOneCoordenadas", "***INICIAL: " + i_touchPoint.x + " " + i_touchPoint.y);
+			continue;
+		}
+		
+		
+		if (event.type == TouchEvent.TOUCH_DRAGGED && event.pointer == pointer) {
+			touchPoint.set(event.x, event.y);
+			guiCam.touchToWorld(touchPoint);
+			hubodrag = true;
+			// Log.i("gameOneCoordenadas", "***coordenadas: " + touchPoint.x + " " + touchPoint.y);
+			continue;
+		}			
+*/		
+		/* ver como meter esto luego
+		if (event.type == TouchEvent.TOUCH_UP) {
+			touchPoint.set(event.x, event.y);
+			guiCam.touchToWorld(touchPoint);
+
+			if (OverlapTester.pointInRectangle(pauseBounds, touchPoint)) {
+				Assets.playSound(Assets.clickSound);
+				state = GAME_PAUSED;
+				return;
+			}
+			continue;
+		}
+		*/			
+	/*}
+	touchPoint.sub(i_touchPoint); // dirección
+	touchPoint.nor();
+	Log.i("gameOneCoordenadas", "***ACELEROMETRO: " + touchPoint.x + " " + touchPoint.y);
+	if (hubodrag) {
+	world.update(deltaTime, touchPoint.x, touchPoint.y);
+	} else {
+		world.update(deltaTime, 0, 0);
+	}
+*/
+
+http://stackoverflow.com/questions/937313/android-basic-gesture-detection/938657#938657
+http://stackoverflow.com/questions/5815975/get-speed-of-a-ontouch-action-move-event-in-android
+
+		 /* SOLUCION MÁS DEPURADA */
+		 /*
+			boolean huboalgo = false;
+			
+			List<TouchEvent> touchEvents = game.getInput().getTouchEvents();
+			int len = touchEvents.size();
+			for (int i = 0; i < len; i++) {
+				TouchEvent event = touchEvents.get(i);
+				
+				if (event.type == TouchEvent.TOUCH_DOWN) {
+					origen.set(event.x, event.y);
+				}
+
+				if (event.type == TouchEvent.TOUCH_UP) {
+					origen.set(0, 0);
+					destino.set(0, 0);
+				}
+				
+				if (event.type == TouchEvent.TOUCH_DRAGGED) {
+					destino.set(event.x, event.y);
+					huboalgo = true;
+				}			
+				
+			}
+			
+			if (huboalgo) {
+				guiCam.touchToWorld(destino);
+				guiCam.touchToWorld(origen);
+
+				resta.set(destino);
+				
+				resta.sub(origen);
+				
+				Log.i("gameOneCoordenadas", "resto: DESTINO(" + destino.x + ", " + destino.y + ") - ORIGEN(" + origen.x + ", " + origen.y + ") = RESULTADO(" + resta.x + ", " + resta.y + ")" );
+				
+//				destino.sub(origen).nor(); // dirección
+//				guiCam.touchToWorld(destino);
+//				Log.i("gameOneCoordenadas", "RESULTADO NORMALIZADO: (" + destino.x + ", " + destino.y + ")");				
+				
+			}
+		*/
+		
+		
+		
+				/*
+		if (position.x < 0) {
+			position.x = 0;
+		}
+		if (position.x > World.WORLD_WIDTH) {
+			position.x = World.WORLD_WIDTH;
+		}
+		*/
+		
+		
+					// backup original
+			//hero.velocity.x = -accelX / 10 * Hero.HERO_XMOVE_MAXVELOCITY;
+			//hero.velocity.y = -accelY / 10 * Hero.HERO_YMOVE_MAXVELOCITY;
+		
+		
+		
+
+
+		float dragX, dragY, dX, dY, velX, velY;
+		
+		// Segundos
+		dT += deltaTime;
+
+		List<TouchEvent> touchEvents = game.getInput().getTouchEvents();
+		int len = touchEvents.size();
+		for (int i = 0; i < len; i++) {
+			TouchEvent event = touchEvents.get(i);
+
+			if (event.type == TouchEvent.TOUCH_DOWN) {
+				// Origen
+				downX = event.x;
+				downY = event.y;
+
+				// Velicidad final
+				velNormX = 0;
+				velNormY = 0;
+			}
+
+			if (event.type == TouchEvent.TOUCH_DRAGGED && dT > SCANTIME) {
+				dragX = event.x;
+				dragY = event.y;
+
+				// Distancia
+				dX = dragX - downX;
+				dY = dragY - downY;
+
+				// Si la distancia es distinta de cero, calculo la velocidad
+				// (dX/dT).
+				// Sino dejo la velocidad con que venía.
+				if (dX != 0) {
+					velX = dX / dT;
+
+					// Normalizo
+					velNormX = velX / FloatMath.sqrt(velX * velX + velY * velY);
+
+					// Nuevo origen
+					downX = event.x;
+				}
+
+				// Si la distancia es distinta de cero, calculo la velocidad
+				// (dY/dT).
+				// Sino dejo la velocidad con que venía.
+				if (dY != 0) {
+					velY = dY / dT;
+
+					// Normalizo
+					velNormY = velY / FloatMath.sqrt(velX * velX + velY * velY);
+
+					// Nuevo origen
+					downY = event.y;
+				}
+
+				dT = 0;
+			}
+
+			if (event.type == TouchEvent.TOUCH_UP) {
+				// Velicidad final
+				velNormX = 0;
+				velNormY = 0;
+
+				// Botón Pausa
+				touchPoint.set(event.x, event.y);
+				guiCam.touchToWorld(touchPoint);
+				if (OverlapTester.pointInRectangle(pauseBounds, touchPoint)) {
+					Assets.playSound(Assets.clickSound);
+					state = GAME_PAUSED;
+					return;
+				}
+			}
+		}
+
+		world.update(deltaTime, velNormX, -velNormY);
+
+		if (world.score != lastScore) {
+			lastScore = world.score;
+			scoreString = "score: " + lastScore;
+		}
+		if (world.state == World.WORLD_STATE_NEXT_LEVEL) {
+			state = GAME_LEVEL_END;
+		}
+		if (world.state == World.WORLD_STATE_GAME_OVER) {
+			state = GAME_OVER;
+			if (lastScore >= Settings.highscores[4]) {
+				scoreString = "NEW HIGHSCORE: " + lastScore;
+			} else {
+				scoreString = "score: " + lastScore;
+			}
+			Settings.addScore(lastScore);
+			Settings.save(game.getFileIO());
+		}
+	}
+	
+	
+	**************** ESTO FUNCIONA PERFECTO
+			List<TouchEvent> touchEvents = game.getInput().getTouchEvents();
+		int len = touchEvents.size();
+		for (int i = 0; i < len; i++) {
+			TouchEvent event = touchEvents.get(i);
+
+			if (event.type == TouchEvent.TOUCH_DOWN) {
+				// no anda esto..
+				if (inicio) {
+					inicio = false;
+					touchPoint.set(5*320/10, 7.5f*320/10);
+				} else {
+					// Origen
+					touchPoint.set(event.x, event.y);
+					guiCam.touchToWorld(touchPoint);
+					
+				}
+				
+				x0 = touchPoint.x * 10 / 320;
+				y0 = touchPoint.y * 15 / 480;
+				
+				xi = x0;
+				yi = y0;
+				Log.i("gameOne", "***************ORIGEN(" + x0 + ", " + y0 + ")");
+			}
+
+			if (event.type == TouchEvent.TOUCH_DRAGGED) {
+				touchPoint.set(event.x, event.y);
+				guiCam.touchToWorld(touchPoint);				
+				xi = touchPoint.x * 10 / 320;
+				yi = touchPoint.y * 15 / 480;
+				
+				// Distancia en metros
+				dX = xi - x0;
+				dY = yi - y0;
+				Log.i("gameOne", "***************RESTA(" + dX + ", " + dY + ")");
+				
+				// Origen
+				x0 = xi;
+				y0 = yi;
+				Log.i("gameOne", "***************ORIGEN(" + x0 + ", " + y0 + ")");
+			}
+
+			if (event.type == TouchEvent.TOUCH_UP) {
+				// Botón Pausa
+				touchPoint.set(event.x, event.y);
+				guiCam.touchToWorld(touchPoint);
+				if (OverlapTester.pointInRectangle(pauseBounds, touchPoint)) {
+					Assets.playSound(Assets.clickSound);
+					state = GAME_PAUSED;
+					return;
+				}
+			}
+		}
+				// Punto en el mundo en donde el usuario tiene su dedo en la camara guiCam.
+				touchPoint.set(event.x, event.y);
+				guiCam.touchToWorld(touchPoint);
+				
+				// Transformo las coordenadas en esta camara (guiCam) en la camara
+				// del mundo.
+				xi = touchPoint.x * 10 / guiCam.frustumWidth; // del renderer y el graphics creo que saco esto
+				yi = touchPoint.y * 15 / guiCam.frustumHeight;
+	*********************
+	for (int i = 0; i < len; i++) {
+			TouchEvent event = touchEvents.get(i);
+			Log.i("gameOne", "down 0, up 1, drag 2 " + event.type + "tamaño: " + len);
+			if (event.type != TouchEvent.TOUCH_UP) {
+				continue;
+			}
+			level = (level % MAX_LEVEL) + 1;
+			levelString = "level: " + level;
+			world = new World(worldListener, level);
+			renderer = new WorldRenderer(glGraphics, batcher, world);
+			world.score = lastScore;
+			state = GAME_READY;
+		}
+		

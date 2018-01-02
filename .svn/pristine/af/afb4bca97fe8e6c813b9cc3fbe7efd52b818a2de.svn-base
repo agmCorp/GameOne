@@ -1,0 +1,148 @@
+package com.agm.gameone;
+
+import java.util.List;
+
+import javax.microedition.khronos.opengles.GL10;
+
+import com.badlogic.androidgames.framework.Game;
+import com.badlogic.androidgames.framework.Input.TouchEvent;
+import com.badlogic.androidgames.framework.gl.Camera2D;
+import com.badlogic.androidgames.framework.gl.SpriteBatcher;
+import com.badlogic.androidgames.framework.impl.GLScreen;
+import com.badlogic.androidgames.framework.math.OverlapTester;
+import com.badlogic.androidgames.framework.math.Rectangle;
+import com.badlogic.androidgames.framework.math.Vector2;
+
+public class MainMenuScreen extends GLScreen {
+    Camera2D guiCam;
+    SpriteBatcher batcher;
+    Rectangle soundBounds;
+    Rectangle playBounds;
+    Rectangle accelBounds;
+    Rectangle highscoresBounds;
+    Rectangle helpBounds;
+    Vector2 touchPoint;
+
+    public MainMenuScreen(Game game) {
+        super(game);
+        guiCam = new Camera2D(glGraphics, 320, 480);
+        batcher = new SpriteBatcher(glGraphics, 100);
+        /*
+         * Los rectángulos límite, sirven para controlar en donde el usuario tocó.
+         * Se indica su vértice inferior izquierdo, en las coordenadas de mi 
+         * pantalla (320 x 480), luego el ancho y la altura.
+         * Mi pantalla tiene su origen (0, 0) en el punto inferior izquierdo idéntico
+         * a un sistema matemático.
+         * 
+         * Ej: playBounds
+         * x está centrado en el ancho.
+         * x = (320 - anchoTexturaMainMenu) / 2 = (320-300)/2
+         * y es arbitrario. Cada texto se estima que son 36 de alto.
+         * y = (200 valor arbitrario + 18 media altura de la font)
+         * ancho = ancho de la textura
+         * altura = la altura estimada de la font que es 36
+         * Todo esto en en unidades de guiCam que fue definida 320 x 480.
+         */
+        soundBounds = new Rectangle(0, 0, 64, 64);
+        accelBounds = new Rectangle(320 - 64, 0, 64, 64);
+        playBounds = new Rectangle(160 - 150, 200 + 18, 300, 36);
+        highscoresBounds = new Rectangle(160 - 150, 200 - 18, 300, 36);
+        helpBounds = new Rectangle(160 - 150, 200 - 18 - 36, 300, 36);
+        touchPoint = new Vector2();               
+    }       
+
+    @Override
+    public void update(float deltaTime) {
+        List<TouchEvent> touchEvents = game.getInput().getTouchEvents();
+        game.getInput().getKeyEvents();
+        
+        int len = touchEvents.size();
+        for(int i = 0; i < len; i++) {
+            TouchEvent event = touchEvents.get(i);                        
+            if(event.type == TouchEvent.TOUCH_UP) {
+                touchPoint.set(event.x, event.y);
+                guiCam.touchToWorld(touchPoint);
+                
+                if(OverlapTester.pointInRectangle(playBounds, touchPoint)) {
+                    Assets.playSound(Assets.clickSound);
+                    game.setScreen(new GameScreen(game));
+                    return;
+                }
+                if(OverlapTester.pointInRectangle(highscoresBounds, touchPoint)) {
+                    Assets.playSound(Assets.clickSound);
+                    game.setScreen(new HighscoreScreen(game));
+                    return;
+                }
+                if(OverlapTester.pointInRectangle(helpBounds, touchPoint)) {
+                    Assets.playSound(Assets.clickSound);
+                    game.setScreen(new HelpScreen(game));
+                    return;
+                }
+                if(OverlapTester.pointInRectangle(soundBounds, touchPoint)) {
+                    Assets.playSound(Assets.clickSound);
+                    Settings.soundEnabled = !Settings.soundEnabled;
+                    if(Settings.soundEnabled) {
+                        Assets.musicBackground.play();
+                    } else {
+                        Assets.musicBackground.pause();
+                    }
+                }
+                if(OverlapTester.pointInRectangle(accelBounds, touchPoint)) {
+                    Assets.playSound(Assets.clickSound);
+                    Settings.accelEnabled = !Settings.accelEnabled;
+                }
+            }
+        }
+    }
+
+    @Override
+    public void present(float deltaTime) {
+    	/*
+        * Mi pantalla tiene su origen (0, 0) en el punto inferior izquierdo idéntico
+        * a un sistema matemático.
+        * drawSprite toma como (x, y) el punto en donde quiero dibujar el CENTRO de 
+        * la figura.
+        * Ej: Background
+        * Su centro debe estar justamente en el centro de la pantalla (160, 240).
+        * Ej: logo mide 274 x 124. Su centro es (137, 62). Si ese centro lo 
+        * coloco en x = 160, entonces quedan 23 de margen y queda centrado.
+        * Con respecto al y, se dejó 15 de margen superior.
+    	*/
+    	
+        GL10 gl = glGraphics.getGL();        
+        gl.glClear(GL10.GL_COLOR_BUFFER_BIT);
+        guiCam.setViewportAndMatrices();
+        
+        gl.glEnable(GL10.GL_TEXTURE_2D);
+        
+        batcher.beginBatch(Assets.background);
+        batcher.drawSprite(160, 240, 320, 480, Assets.backgroundRegion);
+        batcher.endBatch();
+        
+        gl.glEnable(GL10.GL_BLEND);
+        gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);               
+        
+        batcher.beginBatch(Assets.items);                 
+        
+        batcher.drawSprite(160, 480 - 15 - 62, 274, 124, Assets.logo);
+        batcher.drawSprite(160, 200, 300, 110, Assets.mainMenu);
+        batcher.drawSprite(32, 32, 64, 64, Settings.soundEnabled?Assets.soundOn:Assets.soundOff);
+        batcher.drawSprite(320 - 32, 32, 64, 64, Settings.accelEnabled?Assets.accelOn:Assets.accelOff);        
+        batcher.endBatch();
+        
+        gl.glDisable(GL10.GL_BLEND);
+    }
+
+    @Override
+    public void pause() {        
+        Settings.save(game.getFileIO());
+    }
+
+    @Override
+    public void resume() {        
+    }       
+
+    @Override
+    public void dispose() {        
+    }
+}

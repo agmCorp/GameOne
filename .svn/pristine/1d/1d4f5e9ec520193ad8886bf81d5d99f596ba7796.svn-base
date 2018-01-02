@@ -1,0 +1,147 @@
+package com.agm.gameone;
+
+import javax.microedition.khronos.opengles.GL10;
+
+import com.badlogic.androidgames.framework.gl.Animation;
+import com.badlogic.androidgames.framework.gl.Camera2D;
+import com.badlogic.androidgames.framework.gl.SpriteBatcher;
+import com.badlogic.androidgames.framework.gl.TextureRegion;
+import com.badlogic.androidgames.framework.impl.GLGraphics;
+
+public class WorldRenderer {
+	static final float FRUSTUM_WIDTH = 10; // metros
+	static final float FRUSTUM_HEIGHT = 15; // metros
+	GLGraphics glGraphics;
+	World world;
+	// Esta cámara se usa para dibujar el juego. Es la que debo scrollear.
+	Camera2D cam;
+	SpriteBatcher batcher;
+
+	public WorldRenderer(GLGraphics glGraphics, SpriteBatcher batcher,
+			World world) {
+		this.glGraphics = glGraphics;
+		this.world = world;
+		this.cam = new Camera2D(glGraphics, FRUSTUM_WIDTH, FRUSTUM_HEIGHT);
+		this.batcher = batcher;
+	}
+
+	// Se invoca tantas veces como performace tiene mi juego
+	public void render() {
+		cam.position.y = world.birdsEyeView.position.y;
+
+		// Controlo límtes del Héroe con respecto a la cámara.
+		if (world.hero.position.y - Hero.HERO_HEIGHT / 2 < cam.position.y
+				- FRUSTUM_HEIGHT / 2) {
+			world.hero.position.y = cam.position.y - FRUSTUM_HEIGHT / 2
+					+ Hero.HERO_HEIGHT / 2;
+		}
+
+		if (world.hero.position.y + Hero.HERO_HEIGHT / 2 > cam.position.y
+				+ FRUSTUM_HEIGHT / 2) {
+			world.hero.position.y = cam.position.y + FRUSTUM_HEIGHT / 2
+					- Hero.HERO_HEIGHT / 2;
+		}
+
+		cam.setViewportAndMatrices();
+		renderBackgroundGame();
+		renderObjects();
+	}
+
+	/*
+	 * No entiendo por que usa FRUTUM_WIDTH y FRUSTUM_HEIGHT. Respuesta: acá uso
+	 * el mapeo 32 pixels 1 metro.
+	 */
+	public void renderBackgroundGame() {
+			TextureRegion keyFrame = Assets.backgroundScroll.getKeyFrame(
+					world.birdsEyeView.stateTime, Animation.ANIMATION_LOOPING);
+
+			batcher.beginBatch(Assets.backgroundGame);
+			batcher.drawSprite(cam.position.x, cam.position.y, FRUSTUM_WIDTH,
+					FRUSTUM_HEIGHT, keyFrame);
+			batcher.endBatch();
+	}
+
+	public void renderObjects() {
+		GL10 gl = glGraphics.getGL();
+		gl.glEnable(GL10.GL_BLEND);
+		gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+
+		batcher.beginBatch(Assets.items);
+		renderHero();
+		renderEnemies();
+		renderSteroids();
+		renderCoins();
+		renderGoal();
+		batcher.endBatch();
+		gl.glDisable(GL10.GL_BLEND);
+	}
+
+	private void renderHero() {
+		TextureRegion keyFrame;
+		switch (world.hero.state) {
+		case Hero.HERO_STATE_ONROIDS:
+			keyFrame = Assets.heroOnRoids.getKeyFrame(world.hero.stateTime,
+					Animation.ANIMATION_LOOPING);
+			break;
+		case Hero.HERO_STATE_HAPPY:
+			keyFrame = Assets.hero.getKeyFrame(world.hero.stateTime,
+					Animation.ANIMATION_LOOPING);
+			break;
+		case Hero.HERO_STATE_HIT:
+		default:
+			keyFrame = Assets.heroHit.getKeyFrame(world.hero.stateTime,
+					Animation.ANIMATION_NONLOOPING);
+		}
+
+		float side = world.hero.velocity.x < 0 ? -1 : 1;
+		/*
+		 * No usamos HERO_WIDTH, HERO_HEIGHT porque esas medidas son del tamaño
+		 * del rectángulo que rodea a hero en unidades del mundo. Acá estamos
+		 * dibujando y tenemos que usar el mapeo 32 pixels 1 metro. Si tiene
+		 * fondo transparente solo se vería el personaje..y su rectángulo de
+		 * colisiones es más chico y está definido en la clase del modelo.
+		 */
+		batcher.drawSprite(world.hero.position.x, world.hero.position.y,
+				side * 2, 2, keyFrame);
+	}
+
+	private void renderEnemies() {
+		int len = world.enemies.size();
+		for (int i = 0; i < len; i++) {
+			EnemyOne enemyOne = world.enemies.get(i);
+			TextureRegion keyFrame = Assets.enemyOne.getKeyFrame(
+					enemyOne.stateTime, Animation.ANIMATION_LOOPING);
+			batcher.drawSprite(enemyOne.position.x, enemyOne.position.y, 2, 2,
+					keyFrame);
+		}
+	}
+
+	private void renderSteroids() {
+		int len = world.steroids.size();
+		for (int i = 0; i < len; i++) {
+			Steroid steroid = world.steroids.get(i);
+			TextureRegion keyFrame = Assets.steroid.getKeyFrame(
+					steroid.stateTime, Animation.ANIMATION_LOOPING);
+			batcher.drawSprite(steroid.position.x, steroid.position.y, 2, 2,
+					keyFrame);
+		}
+	}
+
+	private void renderCoins() {
+		int len = world.coins.size();
+		for (int i = 0; i < len; i++) {
+			Coin coin = world.coins.get(i);
+			TextureRegion keyFrame = Assets.coin.getKeyFrame(coin.stateTime,
+					Animation.ANIMATION_LOOPING);
+			batcher.drawSprite(coin.position.x, coin.position.y, 2, 2, keyFrame);
+		}
+	}
+
+	private void renderGoal() {
+		TextureRegion keyFrame = Assets.goal.getKeyFrame(world.goal.stateTime,
+				Animation.ANIMATION_LOOPING);
+		batcher.drawSprite(world.goal.position.x, world.goal.position.y, 2, 2,
+				keyFrame);
+	}
+
+}

@@ -1,0 +1,235 @@
+package com.agm.gameone;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+import com.badlogic.androidgames.framework.math.OverlapTester;
+
+public class World {
+	public interface WorldListener {
+		public void goal();
+
+		public void pickSteroids();
+
+		public void hit();
+
+		public void coin();
+		
+		public void speedUpBackground(float velocity);
+	}
+
+	public static final float WORLD_WIDTH = 10;
+	// 16 PANTALLAS
+	public static final float WORLD_HEIGHT = 15 * 16;
+	public static final int WORLD_STATE_RUNNING = 0;
+	public static final int WORLD_STATE_NEXT_LEVEL = 1;
+	public static final int WORLD_STATE_GAME_OVER = 2;
+
+	public final Hero hero;
+	public final List<EnemyOne> enemies;
+	public final List<Steroid> steroids;
+	public final List<Coin> coins;
+	public Goal goal;
+	public BirdsEyeView birdsEyeView;
+	public final WorldListener listener;
+	public final Random rand;
+
+	public int score;
+	public int state;
+
+	public World(WorldListener listener, int level) {
+		this.hero = new Hero(5f, 7.5f);
+		
+		// Colisiones
+		this.enemies = new ArrayList<EnemyOne>();
+		this.steroids = new ArrayList<Steroid>();
+		this.coins = new ArrayList<Coin>();
+		
+		// Camara
+		this.birdsEyeView = new BirdsEyeView(WORLD_WIDTH / 2, BirdsEyeView.BIRDSEYEVIEW_HEIGHT / 2, level - 1);
+		listener.speedUpBackground(this.birdsEyeView.velocity.y);
+		this.listener = listener;
+		rand = new Random();
+		generateLevel(level);
+
+		this.score = 0;
+		this.state = WORLD_STATE_RUNNING;
+	}
+
+	private void generateLevel(int level) {
+		/*
+		 * El y aumenta hasta la mitad de la ultima pantalla (pues la meta se
+		 * coloca en el medio de la pantalla).
+		 * Se inicia por sobre el Héroe.
+		 */
+		float y = 22;
+		float x;
+		
+		/*
+		 * Ecuación de la recta que pasa por A(1, 0.93) y B(MAX_LEVEL, 0).
+		 * Siendo 0.93 la probabilidad elegida de generación de enemigos para level 1.
+		 */
+		float probEnemyOne = 0.90f * ((1-level)/(float)(GameScreen.MAX_LEVEL-1)+1);
+		while (y < WORLD_HEIGHT) {
+			// Probabilidad enemigo
+			if (rand.nextFloat() > probEnemyOne ) {
+				// Random x para el enemigo sin que se vaya de la pantalla
+				x = rand.nextFloat() * (WORLD_WIDTH - EnemyOne.ENEMYONE_WIDTH)
+						+ EnemyOne.ENEMYONE_WIDTH / 2;
+				EnemyOne enemyOne = new EnemyOne(x, y, level - 1);
+				enemies.add(enemyOne);
+			}
+			// Probabilidad esteroide
+			if (rand.nextFloat() > 0.95f) {
+				x = rand.nextFloat() * (WORLD_WIDTH - Steroid.STEROID_WIDTH)
+						+ Steroid.STEROID_WIDTH / 2;
+				Steroid steroid = new Steroid(x, y);
+				steroids.add(steroid);
+			}
+
+			// Probabilidad moneda
+			if (rand.nextFloat() > 0.93f) {
+				x = rand.nextFloat() * (WORLD_WIDTH - Coin.COIN_WIDTH)
+						+ Coin.COIN_WIDTH / 2;
+				Coin money = new Coin(x, y);
+				coins.add(money);
+			}
+
+			y += EnemyOne.ENEMYONE_HEIGHT;
+		}
+
+		goal = new Goal(WORLD_WIDTH / 2, WORLD_HEIGHT - Goal.GOAL_HEIGHT / 2 - 2);
+	}
+
+	/*
+	 * Si accelEnabled = true: recibe lectura de acelerómetro.
+	 * Si accelEnabled = false: recibe la cantidad de metros que debe incrementarse a la 
+	 * posición del Hero.
+	 */
+	public void update(float deltaTime, float dX, float dY, boolean accelEnabled) {
+		updateHero(deltaTime, dX, dY, accelEnabled);
+		updateEnemies(deltaTime);
+		updateSteroids(deltaTime);
+		updateCoins(deltaTime);
+		updateGoal(deltaTime);
+		updateBirdsEyeView(deltaTime);
+		if (hero.state != Hero.HERO_STATE_HIT) {
+			if (hero.state != Hero.HERO_STATE_ONROIDS) {
+				checkEnemyCollisions();
+				checkCoinCollisions();
+				checkSteroidCollisions(deltaTime);
+				checkGoalCollisions();
+			} else {
+				checkCoinCollisions();
+				checkSteroidCollisions(deltaTime);
+				checkGoalCollisions();
+			}
+		}
+		checkGameOver();
+	}
+
+	/* Si accelEnabled = true: recibe lectura de acelerómetro 
+	 * Si accelEnabled = false: recibe la cantidad de metros que debe incrementarse a la posición 
+	 * del Hero. Para mover al héroe debo asignar su nueva velocidad, por lo tanto se asignan los 
+	 * metros por segundo de ese incremento.
+	 */
+	private void updateHero(float deltaTime, float dX, float dY, boolean accelEnabled) {
+		if (hero.state != Hero.HERO_STATE_HIT) { 
+			if (!accelEnabled) {
+				hero.velocity.x = dX / deltaTime;
+				hero.velocity.y = dY / deltaTime;
+			} else {
+				hero.velocity.x = -dX / 10 * Hero.HERO_MOVE_VELOCITY;
+				hero.velocity.y = -dY / 10 * Hero.HERO_MOVE_VELOCITY;
+			}
+			if (hero.state == Hero.HERO_STATE_ONROIDS && hero.roidsTime > Hero.HERO_ONROIDS_MAX_TIME) {
+				hero.steroidsOut();
+			}
+		}
+		hero.update(deltaTime);
+	}
+
+	private void updateEnemies(float deltaTime) {
+		int len = enemies.size();
+		for (int i = 0; i < len; i++) {
+			EnemyOne enemyOne = enemies.get(i);
+			enemyOne.update(deltaTime);
+		}
+	}
+
+	private void updateSteroids(float deltaTime) {
+		int len = steroids.size();
+		for (int i = 0; i < len; i++) {
+			Steroid steroid = steroids.get(i);
+			steroid.update(deltaTime);
+		}
+	}
+	
+	private void updateCoins(float deltaTime) {
+		int len = coins.size();
+		for (int i = 0; i < len; i++) {
+			Coin coin = coins.get(i);
+			coin.update(deltaTime);
+		}
+	}
+	
+	private void updateGoal(float deltaTime) {
+		goal.update(deltaTime);
+	}
+
+	private void updateBirdsEyeView(float deltaTime) {
+		birdsEyeView.update(deltaTime);
+	}
+	
+	private void checkEnemyCollisions() {
+		int len = enemies.size();
+		for (int i = 0; i < len; i++) {
+			EnemyOne enemyOne = enemies.get(i);
+			if (OverlapTester.overlapRectangles(enemyOne.bounds, hero.bounds)) {
+				hero.hitEnemyOne();
+				listener.hit();
+			}
+		}
+	}
+
+	private void checkCoinCollisions() {
+		int len = coins.size();
+		for (int i = 0; i < len; i++) {
+			Coin coin = coins.get(i);
+			if (OverlapTester.overlapRectangles(hero.bounds, coin.bounds)) {
+				coins.remove(coin);
+				len = coins.size();
+				listener.coin();
+				score += Coin.COIN_SCORE;
+			}
+		}
+	}
+
+	private void checkSteroidCollisions(float deltaTime) {
+		int len = steroids.size();
+		for (int i = 0; i < len; i++) {
+			Steroid steroid = steroids.get(i);
+			if (OverlapTester.overlapRectangles(hero.bounds, steroid.bounds)) {
+				steroids.remove(steroid);
+				len = steroids.size();
+				hero.pickSteroids();
+				listener.pickSteroids();
+				score += Steroid.STEROID_SCORE;
+			}
+		}
+	}
+
+	private void checkGoalCollisions() {
+		if (OverlapTester.overlapRectangles(goal.bounds, hero.bounds)) {
+			listener.goal();
+			state = WORLD_STATE_NEXT_LEVEL;
+		}
+	}
+
+	private void checkGameOver() {
+		if (hero.state == Hero.HERO_STATE_HIT && hero.dyingTime > Hero.HERO_DYING_TIME) {
+			state = WORLD_STATE_GAME_OVER;
+		}
+	}
+}

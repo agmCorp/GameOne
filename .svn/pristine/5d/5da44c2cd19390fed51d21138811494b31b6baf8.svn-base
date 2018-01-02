@@ -1,0 +1,352 @@
+package com.agm.gameone;
+
+import java.util.List;
+
+import javax.microedition.khronos.opengles.GL10;
+
+import com.agm.gameone.World.WorldListener;
+import com.badlogic.androidgames.framework.Game;
+import com.badlogic.androidgames.framework.Input.TouchEvent;
+import com.badlogic.androidgames.framework.gl.Camera2D;
+import com.badlogic.androidgames.framework.gl.FPSCounter;
+import com.badlogic.androidgames.framework.gl.SpriteBatcher;
+import com.badlogic.androidgames.framework.impl.GLScreen;
+import com.badlogic.androidgames.framework.math.OverlapTester;
+import com.badlogic.androidgames.framework.math.Rectangle;
+import com.badlogic.androidgames.framework.math.Vector2;
+
+public class GameScreen extends GLScreen {
+	static final int GAME_READY = 0;
+	static final int GAME_RUNNING = 1;
+	static final int GAME_PAUSED = 2;
+	static final int GAME_LEVEL_END = 3;
+	static final int GAME_OVER = 4;
+	static final int MAX_LEVEL = 8;
+
+	int state;
+	int level;
+	String levelString;
+	
+	// Esta cámara se usa solo para definir la resolucion de las pantallas
+	// de interacción con el usuario, como menú pausa, ready, etc.
+	Camera2D guiCam;
+	Vector2 touchPoint;
+	SpriteBatcher batcher;
+	World world;
+	WorldListener worldListener;
+	WorldRenderer renderer;
+	Rectangle pauseBounds;
+	Rectangle resumeBounds;
+	Rectangle quitBounds;
+	int lastScore;
+	String scoreString;
+	
+	// Movimiento del personaje
+	float x0, y0;
+	boolean calculate = false;
+	
+	boolean skipTouchUp = !Settings.accelEnabled;
+	
+	FPSCounter fpsc;
+
+	public GameScreen(Game game) {
+		super(game);
+		state = GAME_READY;
+		level = 1;
+		levelString = "level: 1";
+		guiCam = new Camera2D(glGraphics, 320, 480);
+		touchPoint = new Vector2();
+		batcher = new SpriteBatcher(glGraphics, 1000);
+		worldListener = new WorldListener() {
+			public void goal() {
+				Assets.playSound(Assets.goalSound);
+			}
+
+			public void pickSteroids() {
+				Assets.playSound(Assets.roidsSound);
+			}
+
+			public void hit() {
+				Assets.playSound(Assets.hitSound);
+			}
+
+			public void coin() {
+				Assets.playSound(Assets.coinSound);
+			}
+			
+			public void speedUpBackground(float velocity) {
+				Assets.speedUpBackgroundAnimation(velocity);
+			}
+		};
+		world = new World(worldListener, level);
+		renderer = new WorldRenderer(glGraphics, batcher, world);
+		// Acá todo es en pixels
+		pauseBounds = new Rectangle(320 - 64, 480 - 64, 64, 64);
+		resumeBounds = new Rectangle(160 - 96, 240, 192, 36);
+		quitBounds = new Rectangle(160 - 96, 240 - 36, 192, 36);
+		lastScore = 0;
+		scoreString = "score: 0";
+
+		fpsc = new FPSCounter();
+	}
+
+	@Override
+	public void update(float deltaTime) {
+		// Workaround página 482
+		if (deltaTime > 0.1f) {
+			deltaTime = 0.1f;
+		}
+
+		switch (state) {
+		case GAME_READY:
+			updateReady();
+			break;
+		case GAME_RUNNING:
+			updateRunning(deltaTime);
+			break;
+		case GAME_PAUSED:
+			updatePaused();
+			break;
+		case GAME_LEVEL_END:
+			updateLevelEnd();
+			break;
+		case GAME_OVER:
+			updateGameOver();
+			break;
+		}
+	}
+
+	private void updateReady() {
+		if (game.getInput().getTouchEvents().size() > 0) {
+			state = GAME_RUNNING;
+		}
+	}
+
+	private void updateRunning(float deltaTime) {
+		float xi, yi, dX = 0, dY = 0;
+		boolean accelEnabled = Settings.accelEnabled;
+		
+		List<TouchEvent> touchEvents = game.getInput().getTouchEvents();
+		int len = touchEvents.size();
+		for (int i = 0; i < len; i++) {
+			TouchEvent event = touchEvents.get(i);
+			if (!accelEnabled) {
+				if (event.type == TouchEvent.TOUCH_DOWN) {
+					// Origen crudo de coordenadas
+					x0 = event.x;
+					y0 = event.y;
+					calculate = true;
+				}
+	
+				if (event.type == TouchEvent.TOUCH_DRAGGED) {
+					if (calculate) {
+						// Punto en la camara del render en donde el usuario tiene su dedo.
+						touchPoint.set(event.x, event.y);
+						renderer.cam.touchToWorld(touchPoint);
+						xi = touchPoint.x;
+						yi = touchPoint.y;
+						
+						// Punto en la camara del render en donde está el origen
+						touchPoint.set(x0, y0);
+						renderer.cam.touchToWorld(touchPoint);
+						
+						// Distancia en metros al origen
+						dX = xi - touchPoint.x;
+						dY = yi - touchPoint.y;
+						
+						// Nuevo origen crudo de coordenadas
+						x0 = event.x;
+						y0 = event.y;
+					}
+				}
+			}
+			
+			if (event.type == TouchEvent.TOUCH_UP) {
+				calculate = false;
+				
+				// Botón Pausa
+				touchPoint.set(event.x, event.y);
+				guiCam.touchToWorld(touchPoint);
+				if (OverlapTester.pointInRectangle(pauseBounds, touchPoint)) {
+					Assets.playSound(Assets.clickSound);
+					state = GAME_PAUSED;
+					return;
+				}
+			}
+		}
+		
+		if (!accelEnabled) {
+			world.update(deltaTime, dX, dY, false);
+		} else {
+			world.update(deltaTime, game.getInput().getAccelX(), game.getInput().getAccelY(), true);
+		}
+		
+		if (world.score != lastScore) {
+			lastScore = world.score;
+			scoreString = "score: " + lastScore;
+		}
+		if (world.state == World.WORLD_STATE_NEXT_LEVEL) {
+			// Se setea calculate porque se llegó a la casa y no se ejecutó
+			// el evento UP.
+			calculate = false;
+			state = GAME_LEVEL_END;
+		}
+		if (world.state == World.WORLD_STATE_GAME_OVER) {
+			state = GAME_OVER;
+			if (lastScore >= Settings.highscores[4]) {
+				scoreString = "NEW HIGHSCORE: " + lastScore;
+			} else {
+				scoreString = "score: " + lastScore;
+			}
+			Settings.addScore(lastScore);
+			Settings.save(game.getFileIO());
+		}
+	}
+
+	private void updatePaused() {
+		List<TouchEvent> touchEvents = game.getInput().getTouchEvents();
+		int len = touchEvents.size();
+		for (int i = 0; i < len; i++) {
+			TouchEvent event = touchEvents.get(i);
+			if (event.type != TouchEvent.TOUCH_UP) {
+				continue;
+			}
+			touchPoint.set(event.x, event.y);
+			guiCam.touchToWorld(touchPoint);
+
+			if (OverlapTester.pointInRectangle(resumeBounds, touchPoint)) {
+				Assets.playSound(Assets.clickSound);
+				state = GAME_RUNNING;
+				return;
+			}
+
+			if (OverlapTester.pointInRectangle(quitBounds, touchPoint)) {
+				Assets.playSound(Assets.clickSound);
+				game.setScreen(new MainMenuScreen(game));
+				return;
+			}
+		}
+	}
+
+	private void updateLevelEnd() {
+		/* 
+		 * Si el acelerómetro no está activo, ignoro el primer TOUCH_UP ya que cuando se llega
+		 * a la casa, el usuario aún tiene el dedo sobre la pantalla.
+		 */
+		List<TouchEvent> touchEvents = game.getInput().getTouchEvents();
+		int len = touchEvents.size();
+		for (int i = 0; i < len; i++) {
+			TouchEvent event = touchEvents.get(i);
+			if (event.type == TouchEvent.TOUCH_UP) {
+				if (skipTouchUp) {
+					skipTouchUp = false;
+				} else {
+					level = (level % MAX_LEVEL) + 1;
+					levelString = "level: " + level;
+					world = new World(worldListener, level);
+					renderer = new WorldRenderer(glGraphics, batcher, world);
+					world.score = lastScore;
+					state = GAME_READY;
+					skipTouchUp = !Settings.accelEnabled;
+					return;
+				}
+			}
+		}
+	}
+
+	private void updateGameOver() {
+		List<TouchEvent> touchEvents = game.getInput().getTouchEvents();
+		int len = touchEvents.size();
+		for (int i = 0; i < len; i++) {
+			TouchEvent event = touchEvents.get(i);
+			if (event.type != TouchEvent.TOUCH_UP) {
+				continue;
+			}
+			game.setScreen(new MainMenuScreen(game));
+		}
+	}
+
+	@Override
+	public void present(float deltaTime) {
+		GL10 gl = glGraphics.getGL();
+		gl.glClear(GL10.GL_COLOR_BUFFER_BIT);
+		gl.glEnable(GL10.GL_TEXTURE_2D);
+
+		renderer.render();
+
+		guiCam.setViewportAndMatrices();
+		gl.glEnable(GL10.GL_BLEND);
+		gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+		batcher.beginBatch(Assets.items);
+		switch (state) {
+		case GAME_READY:
+			presentReady();
+			break;
+		case GAME_RUNNING:
+			presentRunning();
+			break;
+		case GAME_PAUSED:
+			presentPaused();
+			break;
+		case GAME_LEVEL_END:
+			presentLevelEnd();
+			break;
+		case GAME_OVER:
+			presentGameOver();
+			break;
+		}
+		batcher.endBatch();
+		gl.glDisable(GL10.GL_BLEND);
+
+		fpsc.logFrame();
+	}
+
+	// Acá todo es en pixels
+	private void presentReady() {
+		batcher.drawSprite(160, 240, 192, 32, Assets.ready);
+	}
+
+	private void presentRunning() {
+		batcher.drawSprite(320 - 32, 480 - 32, 64, 64, Assets.pause);
+		Assets.font.drawText(batcher, levelString, 16, 480 - 20);
+		Assets.font.drawText(batcher, scoreString, 16, 480 - 20 - 20);
+	}
+
+	private void presentPaused() {
+		batcher.drawSprite(160, 240, 192, 96, Assets.pauseMenu);
+		Assets.font.drawText(batcher, levelString, 16, 480 - 20);
+		Assets.font.drawText(batcher, scoreString, 16, 480 - 20 - 20);
+	}
+
+	private void presentLevelEnd() {
+		String topText = "Congratulations!!";
+		String bottomText = "You are safe now";
+		float topWidth = Assets.font.glyphWidth * topText.length();
+		float bottomWidth = Assets.font.glyphWidth * bottomText.length();
+		Assets.font.drawText(batcher, topText, 160 - topWidth / 2, 480 - 40);
+		Assets.font.drawText(batcher, bottomText, 160 - bottomWidth / 2, 40);
+	}
+
+	private void presentGameOver() {
+		batcher.drawSprite(160, 240, 160, 96, Assets.gameOver);
+		float scoreWidth = Assets.font.glyphWidth * scoreString.length();
+		Assets.font.drawText(batcher, scoreString, 160 - scoreWidth / 2,
+				480 - 20);
+	}
+
+	@Override
+	public void pause() {
+		if (state == GAME_RUNNING) {
+			state = GAME_PAUSED;
+		}
+	}
+
+	@Override
+	public void resume() {
+	}
+
+	@Override
+	public void dispose() {
+	}
+
+}

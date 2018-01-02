@@ -1,0 +1,35 @@
+package com.agm.gameone;
+
+import com.badlogic.androidgames.framework.DynamicGameObject;
+
+public class CamScroll extends DynamicGameObject {
+    public static final float CAMSCROLL_WIDTH = 10.0f;
+    public static final float CAMSCROLL_HEIGHT = 15.0f;
+    public static final float CAMSCROLL_VELOCITY = 2.0f;
+    
+    public CamScroll(float x, float y) {
+        super(x, y, 0, 0);
+        // Solo tiene velocidad en el eje y.
+        velocity.set(0, CAMSCROLL_VELOCITY);
+    }
+    
+    public void update(float deltaTime) {
+    	// Posicion del centro del objeto
+        position.add(velocity.x * deltaTime, velocity.y * deltaTime);
+        
+        if (position.x - CAMSCROLL_WIDTH / 2 < 0) {
+            position.x = CAMSCROLL_WIDTH / 2;
+        }
+        if (position.x + CAMSCROLL_WIDTH / 2 > World.WORLD_WIDTH) {
+            position.x = World.WORLD_WIDTH - CAMSCROLL_WIDTH / 2;
+        } 
+
+        if (position.y - CAMSCROLL_HEIGHT / 2 < 0) {
+            position.y = CAMSCROLL_HEIGHT / 2;
+        }
+        
+        if (position.y + CAMSCROLL_HEIGHT / 2 > World.WORLD_HEIGHT) {
+            position.y = World.WORLD_HEIGHT - CAMSCROLL_HEIGHT / 2;
+        }    
+    }
+}
